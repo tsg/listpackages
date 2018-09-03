@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -121,6 +123,47 @@ func listDebPackages() ([]Package, error) {
 	return packages, nil
 }
 
+func listBrewPackages() ([]Package, error) {
+	cellarPath := "/usr/local/Cellar"
+
+	cellarInfo, err := os.Stat(cellarPath)
+	if err != nil {
+		return nil, fmt.Errorf("Homebrew cellar not found in %s: %v", cellarPath, err)
+	}
+	if !cellarInfo.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", cellarPath)
+	}
+
+	packageDirs, err := ioutil.ReadDir(cellarPath)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading directory %s: %v", cellarPath, err)
+	}
+
+	packages := []Package{}
+	for _, packageDir := range packageDirs {
+		if !packageDir.IsDir() {
+			continue
+		}
+		path := path.Join(cellarPath, packageDir.Name())
+		versions, err := ioutil.ReadDir(path)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading directory: %s: %v", path, err)
+		}
+		for _, version := range versions {
+			if !version.IsDir() {
+				continue
+			}
+			pkg := Package{
+				Name:        packageDir.Name(),
+				Version:     version.Name(),
+				InstallTime: version.ModTime(),
+			}
+			packages = append(packages, pkg)
+		}
+	}
+	return packages, nil
+}
+
 func main() {
 
 	host, err := sysinfo.Host()
@@ -145,6 +188,12 @@ func main() {
 		}
 	case "debian":
 		packages, err = listDebPackages()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	case "darwin":
+		packages, err = listBrewPackages()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

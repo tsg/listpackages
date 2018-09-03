@@ -6,3 +6,4 @@ Currently supports:
 
 * Debian and derivates - by reading and parsing the `/var/lib/dpkg/status` file
 * RedHat and derivates - by exec'ing `rpm -qa`
+* macOs with Homebrew - by walking `/usr/local/Cellar`
