@@ -24,10 +24,11 @@ type Package struct {
 	InstallTime time.Time
 	Size        uint64
 	Summary     string
+	URL         string
 }
 
 func listRPMPackages() ([]Package, error) {
-	format := "%{NAME}|%{VERSION}|%{RELEASE}|%{ARCH}|%{LICENSE}|%{INSTALLTIME}|%{SIZE}|%{SUMMARY}\\n"
+	format := "%{NAME}|%{VERSION}|%{RELEASE}|%{ARCH}|%{LICENSE}|%{INSTALLTIME}|%{SIZE}|%{URL}|%{SUMMARY}\\n"
 	out, err := exec.Command("/usr/bin/rpm", "--qf", format, "-qa").Output()
 	if err != nil {
 		return nil, fmt.Errorf("Error running rpm -qa command: %v", err)
@@ -39,9 +40,9 @@ func listRPMPackages() ([]Package, error) {
 		if len(strings.TrimSpace(line)) == 0 {
 			continue
 		}
-		words := strings.SplitN(line, "|", 8)
-		if len(words) < 8 {
-			return nil, fmt.Errorf("Line '%s' doesn't have at least 7 elements", line)
+		words := strings.SplitN(line, "|", 9)
+		if len(words) < 9 {
+			return nil, fmt.Errorf("Line '%s' doesn't have enough elements", line)
 		}
 		pkg := Package{
 			Name:    words[0],
@@ -51,7 +52,8 @@ func listRPMPackages() ([]Package, error) {
 			License: words[4],
 			// install time - 5
 			// size - 6
-			Summary: words[7],
+			URL:     words[7],
+			Summary: words[8],
 		}
 		ts, err := strconv.ParseInt(words[5], 10, 64)
 		if err != nil {
@@ -144,10 +146,10 @@ func listBrewPackages() ([]Package, error) {
 		if !packageDir.IsDir() {
 			continue
 		}
-		path := path.Join(cellarPath, packageDir.Name())
-		versions, err := ioutil.ReadDir(path)
+		pkgPath := path.Join(cellarPath, packageDir.Name())
+		versions, err := ioutil.ReadDir(pkgPath)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading directory: %s: %v", path, err)
+			return nil, fmt.Errorf("Error reading directory: %s: %v", pkgPath, err)
 		}
 		for _, version := range versions {
 			if !version.IsDir() {
@@ -158,6 +160,30 @@ func listBrewPackages() ([]Package, error) {
 				Version:     version.Name(),
 				InstallTime: version.ModTime(),
 			}
+
+			// read formula
+			formulaPath := path.Join(cellarPath, pkg.Name, pkg.Version, ".brew", pkg.Name+".rb")
+			file, err := os.Open(formulaPath)
+			if err != nil {
+				//fmt.Printf("WARNING: Can't get formula for package %s-%s\n", pkg.Name, pkg.Version)
+				// TODO: follow the path from INSTALL_RECEIPT.json to find the formula
+				continue
+			}
+			scanner := bufio.NewScanner(file)
+			count := 15 // only look into the first few lines of the formula
+			for scanner.Scan() {
+				count -= 1
+				if count == 0 {
+					break
+				}
+				line := scanner.Text()
+				if strings.HasPrefix(line, "  desc ") {
+					pkg.Summary = strings.Trim(line[7:], " \"")
+				} else if strings.HasPrefix(line, "  homepage ") {
+					pkg.URL = strings.Trim(line[11:], " \"")
+				}
+			}
+
 			packages = append(packages, pkg)
 		}
 	}
