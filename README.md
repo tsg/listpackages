@@ -1,4 +1,4 @@
-==List OS packages
+# List OS packages
 
 Golang PoC to list the installed packages on a particular system:
 
