@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "O8c/VKtW34XPJNNlyeb/im8vWSI=",
+			"path": "github.com/coreos/pkg/dlopen",
+			"revision": "399ea9e2e55f791b6e3d920860dbecb99c3692f0",
+			"revisionTime": "2018-09-28T19:01:04Z"
+		},
+		{
 			"checksumSHA1": "QhFIpuHPaV6hKejKcc2wm6y4MSQ=",
 			"path": "github.com/elastic/go-sysinfo",
 			"revision": "b30cfd89b3c329a5b84f237573c8422730d2e170",
